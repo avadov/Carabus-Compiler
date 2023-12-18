@@ -6,6 +6,8 @@
 #include "stdlib.h"
 #include "ctype.h"
 
+char strValue[80];
+
 // Lookahead letter of a program text
 char nextChar;
 
@@ -69,13 +71,19 @@ char getNum() {
     return num;
 }
 
-// Print a string after tab
+// Print a string without tab. Then add the string to assembly source
+void encodePlain(const char * str) {
+    printf("%s", str);
+    fprintf(asm_code, "%s", str);
+}
+
+// Print a string after tab. Then add the string to assembly source
 void encode(const char * str) {
     printf("\t%s", str);
     fprintf(asm_code, "\t%s", str);
 }
 
-// Print a string with tab and \n
+// Print a string with tab and \n. Then add the string to assembly source
 void encodeLn(const char * str) {
     printf("\t%s\n", str);
     fprintf(asm_code, "\t%s\n", str);
@@ -84,30 +92,33 @@ void encodeLn(const char * str) {
 // Parse and translate a single term
 void term() {
     char num = getNum();
-    encode("MOVE $");
-    printf("%c", num);
-    encodeLn(", %DX");
+    strValue[0] = num;
+    strValue[1] = '\0';
+
+    encode("movq $");
+    encodePlain(strValue);
+    encodeLn(", %rdx");
 }
 
 // Translate an addition
 void add() {
     match('+');
     term();
-    encodeLn("ADD %AX, %DX");
+    encodeLn("add %rax, %rdx");
 }
 
 // Translate a subtraction
 void subtract() {
     match('-');
     term();
-    encodeLn("SUB %DX, %AX");
-    encodeLn("MOV %AX, %DX");
+    encodeLn("sub %rdx, %rax");
+    encodeLn("movq %rax, %rdx");
 }
 
 // Parse and translate an expression
 void expression() {
     term();
-    encodeLn("MOVE %DX, %AX");
+    encodeLn("movq %rdx, %rax");
     switch (nextChar) {
         case '+':
             add();
@@ -122,11 +133,20 @@ void expression() {
 
 void init() {
     asm_code = fopen("asm.s", "w");
+    fprintf(asm_code, "%s",
+            ".globl _start \n"
+            ".text \n"
+            "_start: \n");
     readChar();
 }
 
 // Compile assembly code to executable file
 void compile() {
+    fprintf(asm_code, "%s",
+            "\nexit: \n"
+            "\tmovq $0, %rdi \n"
+            "\tmovq $60, %rax \n"
+            "\tsyscall \n");
     fclose(asm_code);
 }
 
@@ -136,5 +156,4 @@ int main() {
 
     compile();
 }
-
 
