@@ -134,19 +134,31 @@ void expression() {
 void init() {
     asm_code = fopen("asm.s", "w");
     fprintf(asm_code, "%s",
-            ".globl _start \n"
+            ".globl main \n"
             ".text \n"
-            "_start: \n");
+            "main: \n");
     readChar();
 }
 
 // Compile assembly code to executable file
 void compile() {
     fprintf(asm_code, "%s",
-            "\nexit: \n"
-            "\tmovq $0, %rdi \n"
-            "\tmovq $60, %rax \n"
-            "\tsyscall \n");
+            "\t"
+            "movq %rdx, %rdi \n\t"
+            "call print_number\n"
+            "exit: \n\t"
+            "ret \n\n"
+            "# Print a number passed in RDI register \n"
+            "print_number: \n\t"
+            "push %rbx \n\t"
+            "movq %rdi, %rsi \n\t"
+            "xor %eax, %eax \n\t"
+            "lea format(%rip), %rdi \n\t"
+            "call printf \n\t"
+            "pop %rbx \n\t"
+            "ret \n\n"
+            ".data \n\t"
+            "format: .asciz \"%d\\n\" \n");
     fclose(asm_code);
 }
 
