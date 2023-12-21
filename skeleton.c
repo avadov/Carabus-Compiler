@@ -160,6 +160,24 @@ void compile() {
             ".data \n\t"
             "format: .asciz \"%d\\n\" \n");
     fclose(asm_code);
+
+    // BASH pipe pointer
+    FILE *bashPipe;
+    char *cmd = "as asm.s -o asm.o; gcc asm.o -o asm";
+    char buf[128];
+
+    // Assemble and link with GCC
+    if ((bashPipe = popen(cmd, "r")) == NULL) {
+        printf("Error running BASH! \n");
+        exit(1);
+    }
+    while (fgets(buf, 128, bashPipe) != NULL) {
+        printf("%s", buf);
+    }
+    if (pclose(bashPipe)) {
+        printf("GCC not found or exited with error status\n");
+        exit(1);
+    }
 }
 
 int main() {
