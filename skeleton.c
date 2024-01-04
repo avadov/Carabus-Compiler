@@ -6,8 +6,6 @@
 #include "stdlib.h"
 #include "ctype.h"
 
-char strValue[80];
-
 // Lookahead letter of a program text
 char nextChar;
 
@@ -89,8 +87,13 @@ void encodeLn(const char * str) {
     fprintf(asm_code, "\t%s\n", str);
 }
 
-// Parse and translate a single term
-void term() {
+
+// Functions for processing of math expressions
+
+// Parse a factor of a product
+void factor() {
+    char strValue[20];
+
     char num = getNum();
     strValue[0] = num;
     strValue[1] = '\0';
@@ -100,17 +103,58 @@ void term() {
     encodeLn(", %rdx");
 }
 
+// Translate a multiplication
+void multiply() {
+    match('*');
+    factor();
+    encodeLn("imulq %rdx");
+    encodeLn("movq %rax, %rdx");
+}
+
+//Translate a division
+void divide() {
+    match('/');
+    factor();
+    encodeLn("movq %rdx, %rsi");
+    encodeLn("cqo");
+    encodeLn("idivq %rsi");
+    encodeLn("movq %rax, %rdx");
+}
+
+// Parse and translate a single term
+void term() {
+    factor();
+    while(nextChar == '*' || nextChar == '/') {
+        //encodeLn("pushq %rdx");
+        encodeLn("movq %rdx, %rax");
+        switch (nextChar) {
+            case '*':
+                multiply();
+                break;
+            case '/':
+                divide();
+                break;
+            default:
+                expected("'/' or '*' operation");
+        }
+    }
+}
+
 // Translate an addition
 void add() {
     match('+');
+    encodeLn("pushq %rax");
     term();
+    encodeLn("popq %rax");
     encodeLn("add %rax, %rdx");
 }
 
 // Translate a subtraction
 void subtract() {
     match('-');
+    encodeLn("pushq %rax");
     term();
+    encodeLn("popq %rax");
     encodeLn("sub %rdx, %rax");
     encodeLn("movq %rax, %rdx");
 }
@@ -118,18 +162,26 @@ void subtract() {
 // Parse and translate an expression
 void expression() {
     term();
-    encodeLn("movq %rdx, %rax");
-    switch (nextChar) {
-        case '+':
-            add();
-            break;
-        case '-':
-            subtract();
-            break;
-        default:
-            expected("Operation");
+    while (nextChar == '+' || nextChar == '-') {
+        encodeLn("movq %rdx, %rax");
+        switch (nextChar) {
+            case '+':
+                add();
+                break;
+            case '-':
+                subtract();
+                break;
+            default:
+                expected("Operation");
+        }
     }
 }
+
+
+
+
+
+// Translating functions
 
 void init() {
     asm_code = fopen("asm.s", "w");
